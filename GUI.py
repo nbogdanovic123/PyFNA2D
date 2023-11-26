@@ -11,6 +11,8 @@ from Adjustment import run2d
 from FileHandler import *
 import sys
 
+# TODO Implement new UI (HA GL MF YOU GONNA NEED IT)
+
 
 class MainWindow(QMainWindow, Ui_MainWindow):
     msg_signal = QtCore.pyqtSignal(str, str)

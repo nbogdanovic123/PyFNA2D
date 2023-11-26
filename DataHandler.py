@@ -1,4 +1,4 @@
-from typing import List, Union, Tuple
+from typing import List, Tuple
 from math import *
 import numpy as np
 from numpy import ndarray
@@ -30,28 +30,30 @@ def _quadrant_atan(a, b):
         return atan(a / b) + 2 * pi
 
 
-def get_ni_list(pts_list, msm_list, comm_signal) -> List[Tuple[str, float]] | str:
+def get_ni_from_coords(pts_list, msm_list, comm_signal, adjusted=False) -> None | str:
     """
-
-    :param comm_signal:
-    :param List[Point] pts_list:
-    :param List[Distance] | List[Direction] msm_list:
-    :returns:  a
+    Updates Directions/Distances ni_from_coords variable.
+    :param comm_signal: pyqtSignal used for communication though the program
+    :param List[Point] pts_list: List of Points
+    :param List[Distance] | List[Direction] msm_list: List of Directions/Distances
+    :param bool adjusted: True if updates adj_ni_from_coords variable (Adjusted points are used), False by default
+    :returns:  None/'Error'
     """
     # This only works because list rename methods because they use 1 2 3... as Point ID
     if len(pts_list) == 0:
         comm_signal.emit('c', 'Ne postoje podaci o tačkama. Proverite početnu ćeliju tačaka.')
         return 'Error'
 
-    pts_dict = Point.list_to_dict(pts_list)
     try:
-        ni = []
         for measurement in msm_list:
             station = Point.get_point_from_id(pts_list, measurement.from_)
             to = Point.get_point_from_id(pts_list, measurement.to)
-            ni.append(station.ni(to))
-        # return [pts_dict.get(measurement.from_).ni(pts_dict.get(measurement.to)) for measurement in msm_list]
-        return ni
+
+            if adjusted:
+                measurement.set_adj_ni_from_coords(station.ni(to))
+            else:
+                measurement.set_ni_from_coords(station.ni(to))
+
     except AttributeError:
         comm_signal.emit('c', f'Greška prilikom računanja direkcionog ugla.\n'
                               f'Proverite početne ćelije i ime radnog lista sa podacima.')
@@ -64,11 +66,29 @@ def get_ni_list(pts_list, msm_list, comm_signal) -> List[Tuple[str, float]] | st
         return 'Error'
 
 
-def get_distance_list(pts_list: list[Point], msm_list, comm_signal) -> List[Tuple[str, float]]:
+def get_distance_from_coords(pts_list, msm_list, comm_signal, adjusted=False) -> None | str:
+    """
+    Updates Directions/Distances d_from_coords variable.
+
+    :param comm_signal: pyqtSignal used for communication though the program
+    :param List[Point] pts_list: List of Points
+    :param List[Distance] | List[Direction] msm_list: List of Directions/Distances
+    :param bool adjusted: True if updates adj_d_from_coords variable (Adjusted points are used), False by default
+    :returns:  None/'Error'
+    """
     # This only works because list rename methods because they use 1 2 3... as Point ID
-    pts_dict = {i + 1: point for i, point in enumerate(pts_list)}
+    # pts_dict = {i + 1: point for i, point in enumerate(pts_list)}
     try:
-        return [pts_dict.get(measurement.from_).distance(pts_dict.get(measurement.to)) for measurement in msm_list]
+        for measurement in msm_list:
+            station = Point.get_point_from_id(pts_list, measurement.from_)
+            to = Point.get_point_from_id(pts_list, measurement.to)
+
+            if adjusted:
+                measurement.set_adj_d_from_coords(station.distance(to))
+            else:
+                measurement.set_d_from_coords(station.distance(to))
+
+        # return [pts_dict.get(measurement.from_).distance(pts_dict.get(measurement.to)) for measurement in msm_list]
     except AttributeError:
         comm_signal.emit('c', f'Greška prilikom računanja rastojanja.\n'
                               f'Proverite početne ćelije i ime radnog lista sa podacima.')
@@ -90,48 +110,28 @@ def get_num_of_stations(directions: List[Direction], points: List[Point]) -> int
     return len(station_list)
 
 
-def aij(ni: list, distance: list) -> List[List[Union[str, float]]]:
-    return [[ni_el[0], RO * sin(ni_el[1]) / (d[1] * 1000)] for ni_el, d in zip(ni, distance)]
-
-
-def bij(ni, distance):
-    return [[ni_el[0], -RO * cos(ni_el[1]) / (d[1] * 1000)] for ni_el, d in zip(ni, distance)]
-
-
-def Aij(ni) -> List[List[Union[str, float]]]:
-    return [[ni_el[0], -cos(ni_el[1])] for ni_el in ni]
-
-
-def Bij(ni):
-    return [[ni_el[0], -sin(ni_el[1])] for ni_el in ni]
-
-
-def make_mat_a_rows(aij, bij, row_len, station_num=0):
+def make_mat_a_rows(msm_list: List[Direction] | List[Distance], row_len, station_num=0):
     ab_part = []
     z_part = []
-    for a, b in zip(aij, bij):
+    for msm in msm_list:
         row = [0] * row_len
-        if a[0] != b[0]:
-            raise ValueError(f'a and b not matching at: a: {a[0]} - b: {b[0]}')
         # MUST DO RENAME TO WORK
-        from_, to = b[0].split('-')
-        from_, to = int(from_), int(to)
 
-        y_index = 2 * from_ - 2
+        y_index = 2 * msm.from_ - 2
         x_index = y_index + 1
-        row[y_index] = b[1]
-        row[x_index] = a[1]
+        row[y_index] = msm.bij
+        row[x_index] = msm.aij
 
-        y_index = 2 * to - 2
+        y_index = 2 * msm.to - 2
         x_index = y_index + 1
-        row[y_index] = -b[1]
-        row[x_index] = -a[1]
+        row[y_index] = -msm.bij
+        row[x_index] = -msm.aij
 
         ab_part.append(row)
 
         if station_num != 0:
             z_row = [0] * station_num
-            z_row[from_ - 1] = 1
+            z_row[msm.from_ - 1] = 1
             z_part.append(z_row)
 
     if station_num != 0:
@@ -150,33 +150,35 @@ def mat_a(direction_coef, distance_coef, comm_signal):
         return 'Error'
 
 
-def fill_mat_f(directions: List[Direction], distances: List[Distance], ni_from_coord, dis_from_coord, points):
+def fill_mat_f(directions: List[Direction], distances: List[Distance], points):
     f_dir = []
 
-    zi = [(ni[0], (angle.value - ni[1]) + 2 * pi) if (angle.value - ni[1]) <= 0
-          else (ni[0], angle.value - ni[1]) for angle, ni in zip(directions, ni_from_coord)]
+    for dire in directions:
+        if (dire.value - dire.ni_from_coords) <= 0:
+            dire.set_z(dire.value - dire.ni_from_coords + 2 * pi)
+        else:
+            dire.set_z(dire.value - dire.ni_from_coords)
 
     z_prev = 0
     same_station = []
-    for i, z in enumerate(zi):
-        from_, to = z[0].split('-')
-
+    for i, dire in enumerate(directions):
         if i == 0:
-            z_prev = from_
+            z_prev = dire.from_
 
-        if z_prev == from_:
-            same_station.append(z[1])
+        if z_prev == dire.from_:
+            same_station.append(dire.z)
         else:
             Point.get_point_from_id(points, int(z_prev)).set_z0(_avg(same_station))
             same_station.clear()
-            same_station.append(z[1])
+            same_station.append(dire.z)
 
-        if i == (len(zi) - 1):
+        if i == (len(directions) - 1):
             Point.get_point_from_id(points, int(z_prev)).set_z0(_avg(same_station))
-        z_prev = from_
+        z_prev = dire.from_
 
-    for ni, angle in zip(ni_from_coord, directions):
-        alpha = degrees((ni[1] + Point.get_point_from_id(points, angle.from_).z0) - angle.value - 2 * pi) * 3600
+    for dire in directions:
+        alpha = degrees((dire.ni_from_coords + Point.get_point_from_id(points, dire.from_).z0)
+                        - dire.value - 2 * pi) * 3600
 
         if alpha > 1000000:
             alpha -= _360_DEG_IN_SEC
@@ -185,17 +187,17 @@ def fill_mat_f(directions: List[Direction], distances: List[Distance], ni_from_c
 
         f_dir.append(alpha)
 
-    f_dis = [(d_coord[1] - d.value) * 1000 for d_coord, d in zip(dis_from_coord, distances)]
+    f_dis = [(dis.d_from_coords - dis.value) * 1000 for dis in distances]
 
     [f_dir.append(d) for d in f_dis]
 
     return np.array(f_dir)
 
 
-def fill_mat_p(params: dict, dir_num: int, distance_list: Tuple[str, float]) -> ndarray:
+def fill_mat_p(params: dict, dir_num: int, distance_list: List[Distance]) -> ndarray:
 
     p_dir = [params['sigma0'] ** 2 / (params['sigmaP'] / sqrt(params['DirGyrus'])) ** 2] * dir_num
-    p_dis = [params['sigma0'] ** 2 / ((params['sigmaD'][0] + params['sigmaD'][1] * (d[1] / 1000)) /
+    p_dis = [params['sigma0'] ** 2 / ((params['sigmaD'][0] + params['sigmaD'][1] * (d.d_from_coords / 1000)) /
                                       sqrt(params['DisRepeat'])) ** 2 for d in distance_list]
     for p in p_dis:
         p_dir.append(p)
@@ -447,50 +449,56 @@ def error_ellipse(qx, m0, points: List, alpha):
     [[lambda1.append((y + x + k_) / 2), lambda2.append((y + x - k_) / 2)] for y, x, k_ in zip(qyy, qxx, k)]
     statistics_constant = chi2.ppf(1 - (float(alpha)), 2)
 
-    a = [m0 * sqrt(statistics_constant * l1) for l1 in lambda1]
-    b = [m0 * sqrt(statistics_constant * l2) for l2 in lambda2]
+    a = []
+    b = []
+    for l1, l2 in zip(lambda1, lambda2):
+        try:
+            a.append(m0 * sqrt(statistics_constant * l1))
+        except ValueError:  # Math domain error in cases when l1 is a really small number (10-17) but it's negative
+            a.append(0)
+
+        try:
+            b.append(m0 * sqrt(statistics_constant * l2))
+        except ValueError:
+            b.append(0)
 
     [point.set_ellipse(ErrorEllipse(theta_, a_, b_)) for point, theta_, a_, b_ in zip(points, theta, a, b)]
 
 
-def local_measure(qv_diag, p_diag):
-    return [qv * p for qv, p in zip(qv_diag, p_diag)]
+def local_measure(qv_diag, p_diag, directions, distances):
+    for qv, p, msm in zip(qv_diag, p_diag, (directions + distances)):
+        msm.set_ri(qv * p)
 
 
-def marginal_error(qv_diag, p_diag, m0, alpha, beta):
+def marginal_error(qv_diag, p_diag, m0, alpha, beta, directions, distances):
     non_centrality_param = t.ppf(float(beta), 10000) + t.ppf(1 - float(alpha) / 2, 10000)
-    gi = []
-    for qv, p in zip(qv_diag, p_diag):
+    for qv, p, msm in zip(qv_diag, p_diag, (directions + distances)):
         if qv < 0:
             qv = abs(qv)
         g = (m0 * non_centrality_param) / (p * sqrt(qv))
         if g > 1000000:
             g = np.inf
-        gi.append(g)
-    return gi
+        msm.set_gi(g)
 
 
-def definitive_control(points, v, directions, distances, communication):
-    ni_from_coords = get_ni_list(points, directions, communication)
+def definitive_control(points, v, directions: List[Direction], distances: List[Distance], communication):
+    get_ni_from_coords(points, directions, communication, adjusted=True)
+    get_distance_from_coords(points, distances, communication, adjusted=True)
 
-    u = []
-    for ni, dir_measured in zip(ni_from_coords, directions):
-        station_point = Point.get_point_from_id(points, int(ni[0].split('-')[0]))
-        dir_adjusted = ni[1] + station_point.z0 - 2*pi
+    v_dir = v[:len(directions)]
+    v_dis = v[len(directions):]
+    for dire, vi in zip(directions, v_dir):
+        station_point = Point.get_point_from_id(points, dire.from_)
+        dir_from_adjusted = dire.adj_ni_from_coords + station_point.z0 - 2*pi
 
-        u_dir = dir_adjusted - dir_measured.value
+        u_dir = dir_from_adjusted - dire.value
 
         if u_dir < - 2*pi:
             u_dir += 2*pi
 
-        u.append(u_dir * 3600)
+        dire.set_definitive_control(degrees(u_dir * 3600) - vi)
 
-    dis_from_adjusted = get_distance_list(points, distances, communication)
+    for dis, vi in zip(distances, v_dis):
+        dis.set_definitive_control((dis.adj_d_from_coords - dis.value)*1000 - vi)
 
-    for dis_adjusted, dis_measured in zip(dis_from_adjusted, distances):
-        u.append((dis_adjusted[1] - dis_measured.value)*1000)
-
-    u = np.array(u)
-    # TODO def kontrola za duzine radi, a za pravce nije 0 uvek
-    return u - v
 

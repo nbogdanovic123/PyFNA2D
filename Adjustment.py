@@ -10,10 +10,9 @@ np.set_printoptions(threshold=sys.maxsize, linewidth=sys.maxsize, suppress=True,
 
 NETWORK_DEFECT = 3
 
-# TODO REWRITE SO THAT NI LIST/DIS LIST DOESN'T USE LISTS WITH FROM-TO BUT ARE ADDED TO DIRECTIONS/DISTANCES CLASSES
-# shoulda done this from the beginning, oh well, it works at least
-
 # TODO FINISH DOC STRINGS
+
+
 def run2d(params, communication):
     """
     Main adjustment function.
@@ -40,17 +39,19 @@ def run2d(params, communication):
     Direction.rename_directions_list(directions_list, points_rename_record)
 
     station_num = get_num_of_stations(directions_list, points_list)
-    dir_ni = get_ni_list(points_list, directions_list, communication)
+    dir_ni = get_ni_from_coords(points_list, directions_list, communication)
     if dir_ni == 'Error':
         return False
-    dir_d = get_distance_list(points_list, directions_list, communication)
+    dir_d = get_distance_from_coords(points_list, directions_list, communication)
     if dir_d == 'Error':
         return False
-    dir_aij = aij(dir_ni, dir_d)
-    dir_bij = bij(dir_ni, dir_d)
+
+    for dire in directions_list:
+        dire.set_aij()
+        dire.set_bij()
 
     row_length = 2 * points_number
-    mat_a_direction_part = make_mat_a_rows(dir_aij, dir_bij, row_length,
+    mat_a_direction_part = make_mat_a_rows(directions_list, row_length,
                                            station_num=station_num)
 
     excel_distances = extract_excel_data(wb, params.get('DisDataStart'), params.get('Worksheet'),
@@ -59,25 +60,27 @@ def run2d(params, communication):
         return False
     distances_list = Distance.to_distance_list(excel_distances)
     Distance.rename_distance_list(distances_list, points_rename_record)
-    dis_ni = get_ni_list(points_list, distances_list, communication)
+    dis_ni = get_ni_from_coords(points_list, distances_list, communication)
     if dis_ni == 'Error':
         return False
-    dis_d = get_distance_list(points_list, distances_list, communication)
+    dis_d = get_distance_from_coords(points_list, distances_list, communication)
     if dis_d == 'Error':
         return False
 
-    dis_aij = Aij(dis_ni)
-    dis_bij = Bij(dis_ni)
-    row_length = 2 * points_number + station_num
-    mat_a_distance_part = make_mat_a_rows(dis_aij, dis_bij, row_length)
+    for dis in distances_list:
+        dis.set_aij()
+        dis.set_bij()
+
+    row_length = 2 * points_number + station_num  # Adds 0 for the columns that represent the Z's
+    mat_a_distance_part = make_mat_a_rows(distances_list, row_length)
 
     a = mat_a(mat_a_direction_part, mat_a_distance_part, communication)
     if type(a) is str:
         return False
 
-    f = fill_mat_f(directions_list, distances_list, dir_ni, dis_d, points_list)  # also adds value to z0 attr of Point
+    f = fill_mat_f(directions_list, distances_list, points_list)  # also adds value to z0 attr of Point
 
-    p = fill_mat_p(params, len(directions_list), dis_d)
+    p = fill_mat_p(params, len(directions_list), distances_list)
 
     N = matmul(matmul(transpose(a), p), a)
 
@@ -161,9 +164,7 @@ def run2d(params, communication):
 
         a, p = remove_rough_error(a, p, index)
 
-        dir_ni = get_ni_list(points_list, directions_list, communication)
-        dis_d = get_distance_list(points_list, distances_list, communication)
-        f = fill_mat_f(directions_list, distances_list, dir_ni, dis_d, points_list)
+        f = fill_mat_f(directions_list, distances_list, points_list)
 
         N = matmul(matmul(transpose(a), p), a)
 
@@ -207,8 +208,7 @@ def run2d(params, communication):
     apply_corrections(x, points_list)
     standard_deviations(qx, m0, points_list)
 
-    def_control = definitive_control(points_list, v, directions_list, distances_list, communication)
-    print(def_control)
+    definitive_control(points_list, v, directions_list, distances_list, communication)
 
     error_ellipse(qx, m0, points_list, params['alphaCoef'])
     ellipses_scr_times10 = [point.ellipse.to_autocad_scr(point, scale=5) for point in points_list
@@ -217,9 +217,10 @@ def run2d(params, communication):
     ql = matmul(matmul(a, qx), a.transpose())
     qv = inv(p) - ql
 
-    ri = local_measure(qv.diagonal(), p.diagonal())
+    local_measure(qv.diagonal(), p.diagonal(), directions_list, distances_list)
 
-    gi = marginal_error(qv.diagonal(), p.diagonal(), m0, params['alphaCoef'], params['betaCoef'])
+    marginal_error(qv.diagonal(), p.diagonal(), m0, params['alphaCoef'], params['betaCoef'],
+                   directions_list, distances_list)
 
     excel_export_data.update({
         'A': a,
@@ -234,7 +235,7 @@ def run2d(params, communication):
         'elipse gresaka': None,
         'ql': ql,
         'qv': qv,
-        'pouzdanost': [ri, gi]
+        'pouzdanost': None
     })
 
     # Reverting the renaming done in beginning
@@ -259,7 +260,8 @@ def run2d(params, communication):
     if scr_file(ellipses_scr_times10, params['scrOutput'], communication) == 'Error':
         return False
 
-    if excel_export(excel_export_data, params['excelOutput'], communication, points_list) == 'Error':
+    if excel_export(excel_export_data, params['excelOutput'], communication,
+                    points_list, directions_list, distances_list) == 'Error':
         return False
 
     return True

@@ -75,7 +75,7 @@ def extract_excel_data(workbook: Workbook, start_cell: str, worksheet, comm_sign
     return row_data
 
 
-def excel_export(data: dict, file_path, comm_signal, points):
+def excel_export(data: dict, file_path, comm_signal, points, directions, distances):
 
     try:
         with pd.ExcelWriter(file_path, engine='openpyxl') as writer:
@@ -127,8 +127,7 @@ def excel_export(data: dict, file_path, comm_signal, points):
                     continue
 
                 if k == 'pouzdanost':
-                    ri, gi = v
-                    v = [[i+1, r, g] for i, (r, g) in enumerate(zip(ri, gi))]
+                    v = [[i+1, msm.ri, msm.gi] for i, msm in enumerate((directions + distances))]
 
                     header = pd.DataFrame([['Indeks', 'ri', 'Gi']])
                     header.to_excel(writer, sheet_name=k, index=False, header=False, startrow=row, startcol=col)
@@ -180,7 +179,6 @@ def word_report(file_path, old_points, new_points, directions, distances,
     v = excel_export['v']
     qv_diag = excel_export['qv'].diagonal()
     ql_diag = excel_export['ql'].diagonal()
-    ri, gi = excel_export['pouzdanost']
 
     dir_table = []
     [dir_table.append({'from': dire.from_,
@@ -189,8 +187,9 @@ def word_report(file_path, old_points, new_points, directions, distances,
                        'p': round(p_diag[i], 2),
                        'f': round(f[i], 2),
                        'v': round(v[i], 2),
-                       'r': round(ri[i], 2),
-                       'g': round(gi[i], 2),
+                       'dc': round(dire.definitive_control, 1),
+                       'r': round(dire.ri, 2),
+                       'g': round(dire.gi, 2),
                        'qv': round(qv_diag[i], 2),
                        'ql': round(ql_diag[i], 2)}) for i, dire in enumerate(directions)]
 
@@ -202,8 +201,9 @@ def word_report(file_path, old_points, new_points, directions, distances,
                        'p': round(p_diag[i + dir_len], 2),
                        'f': round(f[i + dir_len], 2),
                        'v': round(v[i + dir_len], 2),
-                       'r': round(ri[i + dir_len], 2),
-                       'g': round(gi[i + dir_len], 2),
+                       'dc': round(dist.definitive_control, 1),
+                       'r': round(dist.ri, 2),
+                       'g': round(dist.gi, 2),
                        'qv': round(qv_diag[i + dir_len], 2),
                        'ql': round(ql_diag[i + dir_len], 2)}) for i, dist in enumerate(distances)]
 

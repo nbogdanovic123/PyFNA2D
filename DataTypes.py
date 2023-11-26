@@ -1,5 +1,8 @@
+from abc import abstractmethod
 from math import *
 from typing import Tuple, List, Dict
+
+RO = (180 / pi) * 3600
 
 
 def _get_key(d, value) -> str | int:
@@ -167,7 +170,7 @@ class Point(object):
         if point is None or type(point) is not Point:
             raise ValueError('Tačka ne postoji. Proverite početne ćelije')
 
-        return f'{self.id}-{point.id}', sqrt((point.y - self.y) ** 2 + (point.x - self.x) ** 2)
+        return sqrt((point.y - self.y) ** 2 + (point.x - self.x) ** 2)
 
     def ni(self, point) -> Tuple[str, float]:
         """
@@ -189,13 +192,13 @@ class Point(object):
 
         try:
             if dy >= 0 and dx >= 0:
-                return f'{self.id}-{point.id}', atan(abs(dy/dx))
+                return atan(abs(dy/dx))
             elif dy > 0 > dx:
-                return f'{self.id}-{point.id}', atan(abs(dx/dy)) + pi/2
+                return atan(abs(dx/dy)) + pi/2
             elif dy < 0 and dx < 0:
-                return f'{self.id}-{point.id}', atan(abs(dy/dx)) + pi
+                return atan(abs(dy/dx)) + pi
             else:
-                return f'{self.id}-{point.id}', atan(abs(dx/dy)) + 3*pi/2
+                return atan(abs(dx/dy)) + 3*pi/2
         except ZeroDivisionError:
             dy = self.y - point.y
             dx = self.x - point.x
@@ -212,7 +215,7 @@ class Point(object):
             ni += pi
             if ni > 2*pi:
                 ni -= 2*pi
-            return f'{self.id}-{point.id}', ni
+            return ni
 
     def toCSV(self) -> str:
         """
@@ -284,9 +287,66 @@ class Point(object):
                 print('check if Point list matches Point name record')
 
 
-class Distance(object):
-    def __init__(self, distance_data) -> None:
-        from_, to, value = distance_data
+class Measurement(object):
+
+    def __init__(self):
+        self.from_ = None
+        self.to = None
+        self.value = None
+        self.ni_from_coords = None
+        self.adj_ni_from_coords = None
+        self.d_from_coords = None
+        self.adj_d_from_coords = None
+        self.aij = None
+        self.bij = None
+        self.z = None
+        self.ri = None
+        self.gi = None
+        self.definitive_control = None
+
+    def set_from(self, name):
+        self.from_ = name
+
+    def set_to(self, name):
+        self.to = name
+
+    def set_ni_from_coords(self, ni):
+        self.ni_from_coords = ni
+
+    def set_d_from_coords(self, d):
+        self.d_from_coords = d
+
+    def set_adj_ni_from_coords(self, ni):
+        self.adj_ni_from_coords = ni
+
+    def set_adj_d_from_coords(self, d):
+        self.adj_d_from_coords = d
+
+    @abstractmethod
+    def set_aij(self):
+        pass
+
+    @abstractmethod
+    def set_bij(self):
+        pass
+
+    def set_z(self, z):
+        self.z = z
+
+    def set_definitive_control(self, dc):
+        self.definitive_control = dc
+
+    def set_ri(self, ri):
+        self.ri = ri
+
+    def set_gi(self, gi):
+        self.gi = gi
+
+
+class Distance(Measurement):
+    def __init__(self, data) -> None:
+        super().__init__()
+        from_, to, value = data
         self.from_ = from_
         self.to = to
         self.value = value
@@ -296,12 +356,12 @@ class Distance(object):
     
     def __repr__(self) -> str:
         return f'\n{self.from_}-{self.to} : {self.value}'
-    
-    def set_from(self, name):
-        self.from_ = name
 
-    def set_to(self, name):
-        self.to = name
+    def set_aij(self):
+        self.aij = -cos(self.ni_from_coords)
+
+    def set_bij(self):
+        self.bij = -sin(self.ni_from_coords)
 
     @staticmethod
     def rename_distance_list(distance_list, points_rename_record: dict):
@@ -325,9 +385,10 @@ class Distance(object):
         return [Distance(data) for data in data_list]
 
 
-class Direction(object):
-    def __init__(self, direction_data) -> None:
-        from_, to, degrees, minutes, seconds = direction_data
+class Direction(Measurement):
+    def __init__(self, data) -> None:
+        super().__init__()
+        from_, to, degrees, minutes, seconds = data
         self.from_ = from_
         self.to = to
         self.valueDMS = [degrees, minutes, seconds]
@@ -338,12 +399,12 @@ class Direction(object):
     
     def __repr__(self) -> str:
         return f'\n{self.from_}-{self.to} : {self.valueDMS[0]}° {self.valueDMS[1]}\' {self.valueDMS[2]}"'
-        
-    def set_from(self, name):
-        self.from_ = name
 
-    def set_to(self, name):
-        self.to = name
+    def set_aij(self):
+        self.aij = RO * (sin(self.ni_from_coords) / (self.d_from_coords * 1000))
+
+    def set_bij(self):
+        self.bij = -RO * (cos(self.ni_from_coords) / (self.d_from_coords * 1000))
 
     @staticmethod
     def rename_directions_list(direction_list, points_rename_record: dict):
