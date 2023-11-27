@@ -1,0 +1,219 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MainWindow</class>
+ <widget class="QMainWindow" name="MainWindow">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>471</width>
+    <height>446</height>
+   </rect>
+  </property>
+  <property name="font">
+   <font>
+    <family>Segoe UI</family>
+    <pointsize>10</pointsize>
+   </font>
+  </property>
+  <property name="windowTitle">
+   <string>MainWindow</string>
+  </property>
+  <widget class="QWidget" name="centralwidget">
+   <widget class="QFrame" name="mainFrame">
+    <property name="geometry">
+     <rect>
+      <x>0</x>
+      <y>0</y>
+      <width>472</width>
+      <height>410</height>
+     </rect>
+    </property>
+    <property name="sizePolicy">
+     <sizepolicy hsizetype="Fixed" vsizetype="Fixed">
+      <horstretch>0</horstretch>
+      <verstretch>0</verstretch>
+     </sizepolicy>
+    </property>
+    <property name="minimumSize">
+     <size>
+      <width>472</width>
+      <height>410</height>
+     </size>
+    </property>
+    <property name="maximumSize">
+     <size>
+      <width>472</width>
+      <height>410</height>
+     </size>
+    </property>
+    <property name="font">
+     <font>
+      <family>Segoe UI</family>
+      <pointsize>10</pointsize>
+     </font>
+    </property>
+    <property name="autoFillBackground">
+     <bool>false</bool>
+    </property>
+    <property name="styleSheet">
+     <string notr="true"/>
+    </property>
+    <property name="frameShape">
+     <enum>QFrame::StyledPanel</enum>
+    </property>
+    <property name="frameShadow">
+     <enum>QFrame::Raised</enum>
+    </property>
+    <widget class="QPushButton" name="exit_btn">
+     <property name="geometry">
+      <rect>
+       <x>370</x>
+       <y>370</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Zatvori</string>
+     </property>
+    </widget>
+    <widget class="QPushButton" name="run_btn">
+     <property name="geometry">
+      <rect>
+       <x>290</x>
+       <y>370</y>
+       <width>71</width>
+       <height>31</height>
+      </rect>
+     </property>
+     <property name="text">
+      <string>Pokreni</string>
+     </property>
+    </widget>
+    <widget class="QStackedWidget" name="ui_stack">
+     <property name="geometry">
+      <rect>
+       <x>0</x>
+       <y>10</y>
+       <width>451</width>
+       <height>351</height>
+      </rect>
+     </property>
+     <widget class="QWidget" name="page"/>
+     <widget class="QWidget" name="page_2"/>
+    </widget>
+   </widget>
+  </widget>
+  <widget class="QMenuBar" name="menubar">
+   <property name="geometry">
+    <rect>
+     <x>0</x>
+     <y>0</y>
+     <width>471</width>
+     <height>23</height>
+    </rect>
+   </property>
+   <widget class="QMenu" name="menuFile">
+    <property name="title">
+     <string>File</string>
+    </property>
+    <widget class="QMenu" name="menuClear">
+     <property name="title">
+      <string>Clear</string>
+     </property>
+     <addaction name="actionClear_All"/>
+     <addaction name="actionClear_Current_Tab"/>
+    </widget>
+    <addaction name="actionNew_Project"/>
+    <addaction name="actionOpen_Project"/>
+    <addaction name="actionSave_Project"/>
+    <addaction name="separator"/>
+    <addaction name="menuClear"/>
+   </widget>
+   <widget class="QMenu" name="menuMode">
+    <property name="title">
+     <string>Mode</string>
+    </property>
+    <widget class="QMenu" name="menu1D">
+     <property name="title">
+      <string>1D</string>
+     </property>
+     <addaction name="action1D_Free_Network_Adjustment"/>
+     <addaction name="action1D_Network_Adjustment"/>
+     <addaction name="action1D_Network_Analysis"/>
+    </widget>
+    <widget class="QMenu" name="menu2D">
+     <property name="title">
+      <string>2D</string>
+     </property>
+     <addaction name="action2D_Free_Network_Adjustment"/>
+     <addaction name="action2D_Network_Adjustment"/>
+     <addaction name="action2D_Network_Analysis"/>
+    </widget>
+    <addaction name="menu1D"/>
+    <addaction name="menu2D"/>
+   </widget>
+   <addaction name="menuFile"/>
+   <addaction name="menuMode"/>
+  </widget>
+  <widget class="QStatusBar" name="statusbar"/>
+  <action name="action1D_Free_Network_Adjustment">
+   <property name="text">
+    <string>Free Network Adjustment</string>
+   </property>
+  </action>
+  <action name="action1D_Network_Adjustment">
+   <property name="text">
+    <string>Network Adjustment</string>
+   </property>
+  </action>
+  <action name="action1D_Network_Analysis">
+   <property name="text">
+    <string>Network Analysis</string>
+   </property>
+  </action>
+  <action name="action2D_Free_Network_Adjustment">
+   <property name="text">
+    <string>Free Network Adjustment</string>
+   </property>
+  </action>
+  <action name="action2D_Network_Adjustment">
+   <property name="text">
+    <string>Network Adjustment</string>
+   </property>
+  </action>
+  <action name="action2D_Network_Analysis">
+   <property name="text">
+    <string>Network Analysis</string>
+   </property>
+  </action>
+  <action name="actionNew_Project">
+   <property name="text">
+    <string>New Project</string>
+   </property>
+  </action>
+  <action name="actionOpen_Project">
+   <property name="text">
+    <string>Open Project</string>
+   </property>
+  </action>
+  <action name="actionSave_Project">
+   <property name="text">
+    <string>Save Project</string>
+   </property>
+  </action>
+  <action name="actionClear_All">
+   <property name="text">
+    <string>Clear All</string>
+   </property>
+  </action>
+  <action name="actionClear_Current_Tab">
+   <property name="text">
+    <string>Clear Current Tab</string>
+   </property>
+  </action>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

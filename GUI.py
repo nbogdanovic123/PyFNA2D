@@ -2,7 +2,9 @@ from typing import Tuple
 from PyQt5.QtGui import QStandardItem
 
 from DataTypes import Point
-from QtGUI import Ui_MainWindow
+from MainWindow import Ui_MainWindow
+from TabWidget_1D import Ui_Tabs1D
+from TabWidget_2D import Ui_Tabs2D
 from PyQt5 import QtCore
 from PyQt5.QtWidgets import QMainWindow, QWidget, QApplication, QFileDialog, QMessageBox, QComboBox, \
     QVBoxLayout, QPushButton, QLabel
@@ -11,7 +13,19 @@ from Adjustment import run2d
 from FileHandler import *
 import sys
 
-# TODO Implement new UI (HA GL MF YOU GONNA NEED IT)
+
+class Tab1D(QWidget):
+    def __init__(self):
+        super(Tab1D, self).__init__()
+        self.ui = Ui_Tabs1D()
+        self.ui.setupUi(self)
+
+
+class Tab2D(QWidget):
+    def __init__(self):
+        super(Tab2D, self).__init__()
+        self.ui = Ui_Tabs2D()
+        self.ui.setupUi(self)
 
 
 class MainWindow(QMainWindow, Ui_MainWindow):
@@ -39,9 +53,32 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         'scrOutput': 'C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles/scrTest.scr'
     }
 
+    UI_CODES = {
+        0: '1DFNA',
+        1: '2DFNA',
+        2: '1DNAD',
+        3: '2DNAD',
+        4: '1DNAN',
+        5: '2DNAN'
+    }
+
     def __init__(self):
         super(MainWindow, self).__init__()
         self.setupUi(self)
+        self.ui_stack.removeWidget(self.page)
+        self.ui_stack.removeWidget(self.page_2)
+        self.page.destroy()
+        self.page_2.destroy()
+
+        self.ui_1D = Tab1D()
+        self.ui_2D = Tab2D()
+
+        self.ui_stack.addWidget(self.ui_1D)
+        self.ui_stack.addWidget(self.ui_2D)
+
+        self._change_current_ui(1)
+        self.ui = self.ui_2D.ui
+
         self.setWindowTitle('PyFNA2D')
 
         self.selected_points_lbl = QLabel()
@@ -64,47 +101,70 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         Main program loop. Handles signals and slot connections
         :return None:
         """
-        # temp
-        self.points_start_cell_txt.setText('B4')
-        self.directions_start_cell_txt.setText('F4')
-        self.distances_start_cell_txt.setText('M4')
-        self.input_file_txt.setText(r"C:\Users\nikol\OneDrive\Documents\IG3\vezba1\vezba1.xlsx")
-        self.excel_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
-                                      '/excel.xlsx')
-        self.scr_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
-                                    '/scrTest.scr')
-        self.word_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
-                                     '/izvestaj.docx')
-        self.csv_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
-                                    '/points.csv')
-        self.sigmap_txt.setText('5')
-        self.sigma0_txt.setText('1')
-        self.sigmad_base_txt.setText('3')
-        self.sigmad_per_km_txt.setText('0')
-        self.dir_gyrus_txt.setText('1')
-        self.dis_repeat_txt.setText('1')
-        self.min_trace_rbtn.setChecked(True)
 
-        self.worksheet_btn.clicked.connect(lambda: self._get_sheetname(False))
+        self.action1D_Free_Network_Adjustment.triggered.connect(lambda: self._change_current_ui(0))
+        self.action2D_Free_Network_Adjustment.triggered.connect(lambda: self._change_current_ui(1))
+
+        # temp
+        self.ui.points_start_cell_txt.setText('B4')
+        self.ui.directions_start_cell_txt.setText('F4')
+        self.ui.distances_start_cell_txt.setText('M4')
+        self.ui.input_file_txt.setText(r"C:\Users\nikol\OneDrive\Documents\IG3\vezba1\vezba1.xlsx")
+        self.ui.excel_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
+                                         '/excel.xlsx')
+        self.ui.scr_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
+                                       '/scrTest.scr')
+        self.ui.word_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
+                                        '/izvestaj.docx')
+        self.ui.csv_output_txt.setText('C:/Users/nikol/OneDrive/Documents/Diplomski/python/Izravnanje/testFiles'
+                                       '/points.csv')
+        self.ui.sigmap_txt.setText('5')
+        self.ui.sigma0_txt.setText('1')
+        self.ui.sigmad_base_txt.setText('3')
+        self.ui.sigmad_per_km_txt.setText('0')
+        self.ui.dir_gyrus_txt.setText('1')
+        self.ui.dis_repeat_txt.setText('1')
+        self.ui.min_trace_rbtn.setChecked(True)
+
+        self.ui.worksheet_btn.clicked.connect(lambda: self._get_sheetname(False))
         self.exit_btn.clicked.connect(self._exit_window)
         self.exit_btn.setShortcut('Ctrl+2')
-        self.input_file_tbtn.clicked.connect(self._get_input_file)
+        self.ui.input_file_tbtn.clicked.connect(self._get_input_file)
         self.run_btn.setShortcut('Ctrl+1')
         self.run_btn.clicked.connect(self._run_worker)
-        self.classic_method_rbtn.clicked.connect(self._update_datum_tab)
-        self.min_trace_rbtn.clicked.connect(lambda: self._update_datum_tab(is_classic=False))
-        self.tabWidget.currentChanged.connect(self._refresh_datum_tab)
-        self.word_output_btn.clicked.connect(lambda: self._get_output_file('Word (*.docx)'))
-        self.excel_output_btn.clicked.connect(lambda: self._get_output_file('Excel (*.xlsx)'))
-        self.scr_output_btn.clicked.connect(lambda: self._get_output_file('CAD script (*.scr)'))
-        self.csv_output_btn.clicked.connect(lambda: self._get_output_file('CSV (*.csv)'))
-        self.excel_output_ckb.clicked.connect(self._refresh_export_tab)
-        self.scr_output_ckb.clicked.connect(self._refresh_export_tab)
-        self.datum_point_cmb.currentIndexChanged.connect(lambda: self._update_datum_coord_cmb(self.datum_point_cmb
-                                                                                              .currentIndex()))
+        self.ui.classic_method_rbtn.clicked.connect(self._update_datum_tab)
+        self.ui.min_trace_rbtn.clicked.connect(lambda: self._update_datum_tab(is_classic=False))
+        self.ui.tabWidget.currentChanged.connect(self._refresh_datum_tab)
+        self.ui.word_output_btn.clicked.connect(lambda: self._get_output_file('Word (*.docx)'))
+        self.ui.excel_output_btn.clicked.connect(lambda: self._get_output_file('Excel (*.xlsx)'))
+        self.ui.scr_output_btn.clicked.connect(lambda: self._get_output_file('CAD script (*.scr)'))
+        self.ui.csv_output_btn.clicked.connect(lambda: self._get_output_file('CSV (*.csv)'))
+        self.ui.excel_output_ckb.clicked.connect(self._refresh_export_tab)
+        self.ui.scr_output_ckb.clicked.connect(self._refresh_export_tab)
+        self.ui.datum_point_cmb.currentIndexChanged.connect(lambda: self._update_datum_coord_cmb(self.datum_point_cmb
+                                                                                                 .currentIndex()))
 
         self.msg_signal.connect(self.pop_up_msg)
         self.worker.finished.connect(self._exit_worker)
+
+    def _change_current_ui(self, ui_type_code):
+        ui_name = self.UI_CODES[ui_type_code]
+
+        match ui_name:
+            case '1DFNA':
+                print('1d')
+                self.ui_stack.setCurrentIndex(0)
+            case '2DFNA':
+                print('2d')
+                self.ui_stack.setCurrentIndex(1)
+            case '1DNAD':
+                pass
+            case '2DNAD':
+                pass
+            case '1DNAN':
+                pass
+            case '2DNAN':
+                pass
 
     def _get_default_folder(self, path):
         """
@@ -128,10 +188,10 @@ class MainWindow(QMainWindow, Ui_MainWindow):
         if file:
             self._get_default_folder(file)
             self.PARAMS.update({'inputFile': file})
-            self.input_file_txt.setText(file)
-            self.input_file_txt.setReadOnly(True)
+            self.ui.input_file_txt.setText(file)
+            self.ui.input_file_txt.setReadOnly(True)
             self.PARAMS.update({'Worksheet': None})
-            self.worksheet_btn.setEnabled(False)
+            self.ui.worksheet_btn.setEnabled(False)
         elif self.PARAMS.get('inputFile') in ['', None]:
             self.msg_signal.emit('w', 'Niste izabrali fajl')
             self.tabWidget.setCurrentIndex(0)
@@ -143,30 +203,29 @@ class MainWindow(QMainWindow, Ui_MainWindow):
     def _get_output_file(self, extension):
         """
         QFileDialog - updates the self.PARAMS corresponding key with file path based on file extension provided.
-        :param str extension: File extension
         :return None:
         """
         file, ext = QFileDialog.getSaveFileName(self, 'Save', self.default_folder, extension)
 
         if file and '.docx' in ext:
             self.PARAMS.update({'wordOutput': file})
-            self.word_output_txt.setText(file)
-            self.word_output_txt.setReadOnly(True)
+            self.ui.word_output_txt.setText(file)
+            self.ui.word_output_txt.setReadOnly(True)
         elif file and '.xlsx' in ext:
             self.PARAMS.update({'excelOutput': file})
-            self.excel_output_txt.setText(file)
-            self.excel_output_txt.setReadOnly(True)
+            self.ui.excel_output_txt.setText(file)
+            self.ui.excel_output_txt.setReadOnly(True)
         elif file and '.scr' in ext:
             self.PARAMS.update({'scrOutput': file})
-            self.scr_output_txt.setText(file)
-            self.scr_output_txt.setReadOnly(True)
+            self.ui.scr_output_txt.setText(file)
+            self.ui.scr_output_txt.setReadOnly(True)
         elif file and '.csv' in ext:
             self.PARAMS.update({'csvOutput': file})
-            self.csv_output_txt.setText(file)
-            self.csv_output_txt.setReadOnly(True)
+            self.ui.csv_output_txt.setText(file)
+            self.ui.csv_output_txt.setReadOnly(True)
         else:
             self.msg_signal.emit('w', 'Niste sačuvali sve izabrane fajlove!')
-            self.tabWidget.setCurrentIndex(3)
+            self.ui.tabWidget.setCurrentIndex(3)
 
     def _get_sheetname(self, info_flag):
         """
